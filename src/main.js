@@ -1,12 +1,45 @@
 const THREE = require('three');
+const svg = require('./svg');
 
 let renderer;
 let camera;
 let scene;
 
+let uiController;
+
 let mouseDown = false;
 
 const raycaster = new THREE.Raycaster();
+
+class UIController {
+  constructor() {
+    this.domElement = svg.createSVGElement('svg');
+    this.domElement.setAttribute('id', 'uiview');
+
+    this.drawingModeBox = svg.createSVGElement('rect', {
+      x: 10,
+      y: 10,
+      width: 10,
+      height: 10,
+      fill: 'yellow',
+    });
+
+    this.domElement.appendChild(this.drawingModeBox);
+  }
+
+  setMode(mode) {
+    switch (mode) {
+      case 'drawing':
+        this.drawingModeBox.setAttribute('fill', 'green');
+        break;
+      case 'pathing':
+        this.drawingModeBox.setAttribute('fill', 'white');
+        break;
+      default:
+        throw new Error(`Unknown mode "${mode}"`);
+    }
+  }
+}
 
 const canvas3d = (() => {
   const geometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
@@ -90,8 +123,12 @@ function render() {
 function main() {
   window.addEventListener('resize', onWindowResize, false);
   document.addEventListener('mousemove', onDocumentMouseMove, false);
-  document.addEventListener('mousedown', () => { mouseDown = true; }, false);
+  document.addEventListener('mousedown', () => {
+    uiController.setMode('drawing');
+    mouseDown = true;
+  }, false);
   document.addEventListener('mouseup', () => {
+    uiController.setMode('pathing');
     lastPoint = undefined;
     mouseDown = false;
   }, false);
@@ -120,6 +157,12 @@ function main() {
   camera.position.z = 100;
 
   render(scene, camera);
+
+  // UI
+
+  uiController = new UIController();
+  uiController.domElement.setAttribute('id', 'uiview');
+  document.body.append(uiController.domElement);
 }
 
 main();
