@@ -26,7 +26,6 @@
   },
   "dependencies": {
     "express": "^4.15.3",
-    "lodash": "^4.17.4",
     "three": "^0.85.2"
   }
 }
