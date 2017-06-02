@@ -1,4 +1,5 @@
 const THREE = require('three');
+const Dropzone = require('dropzone');
 const svg = require('./svg');
 
 let renderer;
@@ -11,7 +12,7 @@ let mouseDown = false;
 
 // STATE
 
-const brushStrokes = [];
+let brushStrokes = [];
 
 // END STATE
 
@@ -57,6 +58,18 @@ const canvas3d = (() => {
   return new THREE.Mesh(geometry, material);
 })();
 
+function makeStroke(x1, y1, x2, y2) {
+  const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+
+  const geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(x1, y1, 10),
+    new THREE.Vector3(x2, y2, 10),
+  );
+
+  return new THREE.Line(geometry, material);
+}
+
 let lastPoint;
 
 function onDocumentMouseMove(event) {
@@ -98,19 +111,9 @@ function onDocumentMouseMove(event) {
     return;
   }
 
-  const material = new THREE.LineBasicMaterial({
-    color: 0x0000ff,
-  });
-
-  const geometry = new THREE.Geometry();
-  geometry.vertices.push(
-    new THREE.Vector3(lastPoint.x, lastPoint.y, 10),
-    new THREE.Vector3(sectPoint.x, sectPoint.y, 10),
-  );
-
-  const line = new THREE.Line(geometry, material);
-  scene.add(line);
-  brushStrokes.push(line);
+  const stroke = makeStroke(lastPoint.x, lastPoint.y, sectPoint.x, sectPoint.y);
+  scene.add(stroke);
+  brushStrokes.push(stroke);
 
   lastPoint.copy(sectPoint);
 }
@@ -122,12 +125,12 @@ function undo() {
 
 function save() {
   console.log(brushStrokes[0]);
-  const strokeObject = brushStrokes.map(stroke => JSON.stringify({
+  const strokeObject = JSON.stringify(brushStrokes.map(stroke => ({
     x1: stroke.geometry.vertices[0].x,
     y1: stroke.geometry.vertices[0].y,
     x2: stroke.geometry.vertices[1].x,
     y2: stroke.geometry.vertices[1].y,
-  }));
+  })));
 
   const filename = `${prompt('Save file name:', 'painting')}.json`;
 
@@ -154,6 +157,58 @@ function render() {
   requestAnimationFrame(render);
   renderer.render(scene, camera);
 }
+
+function fileToString(file) {
+  return new Promise((fulfill, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      if (evt.target.readyState !== 2) {
+        return;
+      }
+
+      if (evt.target.error) {
+        reject(evt.target.error);
+      }
+
+      fulfill(evt.target.result);
+    };
+
+    reader.readAsText(file);
+  });
+}
+
+const mediaDropzone = new Dropzone(document.body, {
+  previewsContainer: '.dropzone-previews',
+  url: '/file-upload',
+  clickable: false,
+  init() {
+    this.on('addedfile', (file) => {
+      mediaDropzone.removeFile(file);
+
+      document.body.style.webkitAnimationPlayState = 'running';
+
+      if (file.type !== 'application/json') {
+        console.log(file);
+        alert('Unknown file format');
+      }
+
+      fileToString(file).then((json) => {
+        try {
+          const loadedBrushStrokes = JSON.parse(json);
+
+          brushStrokes.forEach(stroke => scene.remove(stroke));
+          brushStrokes = loadedBrushStrokes.map(({ x1, y1, x2, y2 }) =>
+            makeStroke(x1, y1, x2, y2));
+          brushStrokes.forEach(stroke => scene.add(stroke));
+        } catch (e) {
+          console.error(e, json);
+          alert(`"HLEEAAHHHurkurkBLLEAAHH! HuuRRGblh..."\n\n*splat*\n\n${e.message}`);
+        }
+      });
+    });
+  },
+});
 
 function main() {
   window.addEventListener('resize', onWindowResize, false);
