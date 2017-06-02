@@ -19,6 +19,15 @@ let brushStrokes = [];
 
 const raycaster = new THREE.Raycaster();
 
+function brightness(imageData, x, y) {
+  const i = ((y * imageData.width) + x) * 4;
+  const r = imageData.data[i];
+  const g = imageData.data[i + 1];
+  const b = imageData.data[i + 2];
+
+  return (r + g + b) / 255 / 3;
+}
+
 class UIController {
   constructor() {
     this.domElement = svg.createSVGElement('svg');
@@ -53,16 +62,91 @@ class UIController {
     this.imageSurface.scale.y *= 0.8;
   }
 
+  imageAsStrokes() {
+    const aspectRatio = this.image.width / this.image.height;
+
+    const scaleX = this.imageSurface.scale.x;
+    const scaleY = this.imageSurface.scale.y;
+
+    const smaller = document.createElement('canvas');
+    smaller.width = 64 * aspectRatio * scaleX;
+    smaller.height = 64 * scaleY;
+
+    const ctx = smaller.getContext('2d');
+    ctx.drawImage(this.image, 0, 0, smaller.width, smaller.height);
+
+    this.image = smaller;
+
+    const worldWidth = scaleX * 128 * aspectRatio;
+    const worldHeight = scaleY * 128;
+
+    const startX = this.imageSurface.position.x - (worldWidth / 2);
+    const startY = this.imageSurface.position.y - (worldHeight / 2);
+
+    const imageData = ctx.getImageData(0, 0, this.image.width, this.image.height);
+
+    const strokes = [];
+
+    let x;
+    let y;
+
+    const worldX = sx => startX + ((sx / imageData.width) * worldWidth);
+    const worldY = sy => startY + ((sy / imageData.height) * worldHeight);
+
+    const addStroke = (nx, ny) => {
+      strokes.push({
+        x1: x,
+        y1: y,
+        x2: nx,
+        y2: ny,
+      });
+
+      x = nx;
+      y = ny;
+    };
+
+    let drawing = false;
+
+    for (let sy = 0; sy < imageData.height; sy += 1) {
+      for (let sx = 0; sx < imageData.width; sx += 1) {
+        if (brightness(imageData, sx, sy) < 0.5) {
+          if (!drawing) {
+            drawing = true;
+            x = worldX(sx);
+            y = worldY(sy);
+          }
+        } else if (drawing) {
+          addStroke(worldX(sx), worldY(sy));
+          drawing = false;
+        }
+
+        if (sx === imageData.width - 1 && drawing) {
+          // Stop at the end of the image
+          addStroke(worldX(sx), worldY(sy));
+          drawing = false;
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    this.texture.needsUpdate = true;
+
+    return strokes;
+  }
+
   setImage(image) {
-    const texture = new THREE.Texture(image);
-    texture.needsUpdate = true;
+    this.image = image;
+
+    this.texture = new THREE.Texture(this.image);
+    this.texture.needsUpdate = true;
 
     const material = new THREE.MeshBasicMaterial({
-      map: texture,
+      map: this.texture,
       side: THREE.DoubleSide,
     });
 
-    const aspectRatio = image.width / image.height;
+    const aspectRatio = this.image.width / this.image.height;
 
     this.imageSurface = (() => {
       const geometry = new THREE.PlaneGeometry(128 * aspectRatio, 128);
@@ -310,6 +394,17 @@ function main() {
   window.addEventListener('resize', onWindowResize, false);
   document.addEventListener('mousemove', onDocumentMouseMove, false);
   document.addEventListener('mousedown', () => {
+    if (uiController.mode === 'image') {
+      // We are leaving image mode so we must convert the image to strokes
+      const imageStrokes = uiController.imageAsStrokes();
+      imageStrokes.forEach((line) => {
+        const stroke = makeStroke(line.x1, line.y1, line.x2, line.y2);
+        brushStrokes.push(stroke);
+        scene.add(stroke);
+      });
+      scene.remove(uiController.imageSurface);
+    }
+
     uiController.setMode('drawing');
     mouseDown = true;
   }, false);
