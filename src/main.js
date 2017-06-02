@@ -120,6 +120,30 @@ function undo() {
   scene.remove(lastStroke);
 }
 
+function save() {
+  console.log(brushStrokes[0]);
+  const strokeObject = brushStrokes.map(stroke => JSON.stringify({
+    x1: stroke.geometry.vertices[0].x,
+    y1: stroke.geometry.vertices[0].y,
+    x2: stroke.geometry.vertices[1].x,
+    y2: stroke.geometry.vertices[1].y,
+  }));
+
+  const filename = `${prompt('Save file name:', 'painting')}.json`;
+
+  const blob = new window.Blob([strokeObject], { type: 'application/json' });
+  const url = window.URL.createObjectURL(blob);
+
+  const anchor = document.createElement('a');
+  document.body.appendChild(anchor);
+  anchor.style = 'display: none';
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+
+  window.URL.revokeObjectURL(url);
+}
+
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -148,6 +172,11 @@ function main() {
     switch (event.key) {
       case 'u':
         undo();
+        break;
+      case 's':
+        save();
+        break;
+      default:
         break;
     }
   });
