@@ -405,9 +405,8 @@ function loadPainting(file) {
     try {
       const loadedBrushStrokes = JSON.parse(json);
 
-      brushStrokes.forEach(stroke => scene.remove(stroke));
       brushStrokes = loadedBrushStrokes.map(({ x1, y1, x2, y2 }) =>
-      makeStroke(x1, y1, x2, y2));
+        makeStroke(x1, y1, x2, y2));
       brushStrokes.forEach(stroke => scene.add(stroke));
     } catch (e) {
       console.error(e, json);
