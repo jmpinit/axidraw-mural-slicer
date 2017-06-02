@@ -559,6 +559,12 @@ function main() {
           machineController.runScript(commands);
           break;
         }
+        case 'c': {
+          // Clear
+          brushStrokes.forEach(stroke => scene.remove(stroke));
+          brushStrokes = [];
+          break;
+        }
         default:
           break;
       }
