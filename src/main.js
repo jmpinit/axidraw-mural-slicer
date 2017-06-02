@@ -1,6 +1,7 @@
 const THREE = require('three');
 const Dropzone = require('dropzone');
 const svg = require('./svg');
+const imageUtil = require('./image');
 
 let renderer;
 let camera;
@@ -34,6 +35,38 @@ class UIController {
     this.domElement.appendChild(this.drawingModeBox);
   }
 
+  setImage(image) {
+    const texture = new THREE.Texture(image);
+    texture.needsUpdate = true;
+
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.DoubleSide,
+    });
+
+    this.imageSurface = (() => {
+      const geometry = new THREE.PlaneGeometry(64, 64);
+      const plane = new THREE.Mesh(geometry, material);
+      plane.x = 0;
+      plane.y = 0;
+      plane.z = 5;
+
+      return plane;
+    })();
+
+    scene.add(this.imageSurface);
+  }
+
+  setMouse(mouse) {
+    if (this.mode === 'image') {
+      const camWidth = (camera.right - camera.left);
+      const camHeight = (camera.bottom - camera.top);
+
+      this.imageSurface.position.x = (camWidth * mouse.x) + camera.left;
+      this.imageSurface.position.y = (camHeight * mouse.y) + camera.top;
+    }
+  }
+
   setMode(mode) {
     switch (mode) {
       case 'drawing':
@@ -42,9 +75,14 @@ class UIController {
       case 'pathing':
         this.drawingModeBox.setAttribute('fill', 'white');
         break;
+      case 'image':
+        this.drawingModeBox.setAttribute('fill', 'red');
+        break;
       default:
         throw new Error(`Unknown mode "${mode}"`);
     }
+
+    this.mode = mode;
   }
 }
 
@@ -73,14 +111,21 @@ function makeStroke(x1, y1, x2, y2) {
 let lastPoint;
 
 function onDocumentMouseMove(event) {
-  if (!mouseDown) {
-    return;
-  }
-
   const mouse = new THREE.Vector2(
     ((event.clientX / window.innerWidth) * 2) - 1,
     -((event.clientY / window.innerHeight) * 2) + 1,
   );
+
+  if (uiController.mode === 'image') {
+    uiController.setMouse(new THREE.Vector2(
+      event.clientX / window.innerWidth,
+      event.clientY / window.innerHeight,
+    ));
+  }
+
+  if (!mouseDown) {
+    return;
+  }
 
   raycaster.setFromCamera(mouse.clone(), camera);
   const intersected = raycaster.intersectObject(canvas3d);
@@ -123,7 +168,7 @@ function undo() {
   scene.remove(lastStroke);
 }
 
-function save() {
+function savePainting() {
   console.log(brushStrokes[0]);
 
   const strokeObject = JSON.stringify(brushStrokes.map(stroke => ({
@@ -186,6 +231,39 @@ function fileToString(file) {
   });
 }
 
+function loadPainting(file) {
+  fileToString(file).then((json) => {
+    try {
+      const loadedBrushStrokes = JSON.parse(json);
+
+      brushStrokes.forEach(stroke => scene.remove(stroke));
+      brushStrokes = loadedBrushStrokes.map(({ x1, y1, x2, y2 }) =>
+      makeStroke(x1, y1, x2, y2));
+      brushStrokes.forEach(stroke => scene.add(stroke));
+    } catch (e) {
+      console.error(e, json);
+      alert(`"HLEEAAHHHurkurkBLLEAAHH! HuuRRGblh..."\n\n*splat*\n\n${e.message}`);
+    }
+  });
+}
+
+function fileToCanvas(file) {
+  return new Promise((fulfill, reject) => {
+    const newImage = new Image();
+    newImage.src = URL.createObjectURL(file);
+
+    newImage.onload = () => fulfill(imageUtil.putOnCanvas(newImage));
+    newImage.onerror = err => reject(err);
+  });
+}
+
+function loadImage(file) {
+  fileToCanvas(file).then((canvas) => {
+    uiController.setMode('image');
+    uiController.setImage(canvas);
+  });
+}
+
 const mediaDropzone = new Dropzone(document.body, {
   previewsContainer: '.dropzone-previews',
   url: '/file-upload',
@@ -196,24 +274,14 @@ const mediaDropzone = new Dropzone(document.body, {
 
       document.body.style.webkitAnimationPlayState = 'running';
 
-      if (file.type !== 'application/json') {
+      if (file.type === 'image/jpeg') {
+        loadImage(file);
+      } else if (file.type === 'application/json') {
+        loadPainting(file);
+      } else {
         console.log(file);
-        alert('Unknown file format');
+        alert(`Unknown file format: "${file.type}"`);
       }
-
-      fileToString(file).then((json) => {
-        try {
-          const loadedBrushStrokes = JSON.parse(json);
-
-          brushStrokes.forEach(stroke => scene.remove(stroke));
-          brushStrokes = loadedBrushStrokes.map(({ x1, y1, x2, y2 }) =>
-            makeStroke(x1, y1, x2, y2));
-          brushStrokes.forEach(stroke => scene.add(stroke));
-        } catch (e) {
-          console.error(e, json);
-          alert(`"HLEEAAHHHurkurkBLLEAAHH! HuuRRGblh..."\n\n*splat*\n\n${e.message}`);
-        }
-      });
     });
   },
 });
@@ -237,7 +305,7 @@ function main() {
         undo();
         break;
       case 's':
-        save();
+        savePainting();
         break;
       default:
         break;

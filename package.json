@@ -25,6 +25,7 @@
     "webpack-node-externals": "^1.5.4"
   },
   "dependencies": {
+    "dropzone": "^4.3.0",
     "express": "^4.15.3",
     "three": "^0.85.2"
   }
