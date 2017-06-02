@@ -125,6 +125,7 @@ function undo() {
 
 function save() {
   console.log(brushStrokes[0]);
+
   const strokeObject = JSON.stringify(brushStrokes.map(stroke => ({
     x1: stroke.geometry.vertices[0].x,
     y1: stroke.geometry.vertices[0].y,
@@ -132,7 +133,14 @@ function save() {
     y2: stroke.geometry.vertices[1].y,
   })));
 
-  const filename = `${prompt('Save file name:', 'painting')}.json`;
+  const saveName = prompt('Save file name:', 'painting');
+
+  if (saveName === null) {
+    // They hit cancel, so abort the save
+    return;
+  }
+
+  const filename = `${saveName}.json`;
 
   const blob = new window.Blob([strokeObject], { type: 'application/json' });
   const url = window.URL.createObjectURL(blob);
