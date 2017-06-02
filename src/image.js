@@ -10,6 +10,15 @@ function putOnCanvas(imageThing) {
   return canvas;
 }
 
+function copyCanvas(canvas) {
+  const newCanvas = document.createElement('canvas');
+  newCanvas.width = canvas.width;
+  newCanvas.height = canvas.height;
+  newCanvas.getContext('2d').drawImage(canvas, 0, 0);
+  return newCanvas;
+}
+
 module.exports = {
   putOnCanvas,
+  copyCanvas,
 };

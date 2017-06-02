@@ -42,6 +42,28 @@ class UIController {
     });
 
     this.domElement.appendChild(this.drawingModeBox);
+
+    this.threshold = 0.5;
+  }
+
+  raiseThreshold() {
+    this.threshold += 0.01;
+
+    if (this.threshold > 1) {
+      this.threshold = 1;
+    }
+
+    this.thresholdImage();
+  }
+
+  lowerThreshold() {
+    this.threshold -= 0.01;
+
+    if (this.threshold < 0) {
+      this.threshold = 0;
+    }
+
+    this.thresholdImage();
   }
 
   makeImageBigger() {
@@ -60,6 +82,25 @@ class UIController {
 
     this.imageSurface.scale.x *= 0.8;
     this.imageSurface.scale.y *= 0.8;
+  }
+
+  thresholdImage() {
+    const ctx = this.originalImage.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, this.originalImage.width, this.originalImage.height);
+
+    for (let sy = 0; sy < imageData.height; sy += 1) {
+      for (let sx = 0; sx < imageData.width; sx += 1) {
+        const nb = brightness(imageData, sx, sy) < this.threshold ? 0 : 255;
+        const i = ((sy * imageData.width) + sx) * 4;
+
+        imageData.data[i] = nb;
+        imageData.data[i + 1] = nb;
+        imageData.data[i + 2] = nb;
+      }
+    }
+
+    this.image.getContext('2d').putImageData(imageData, 0, 0);
+    this.texture.needsUpdate = true;
   }
 
   imageAsStrokes() {
@@ -109,7 +150,7 @@ class UIController {
 
     for (let sy = 0; sy < imageData.height; sy += 1) {
       for (let sx = 0; sx < imageData.width; sx += 1) {
-        if (brightness(imageData, sx, sy) < 0.5) {
+        if (brightness(imageData, sx, sy) < this.threshold) {
           if (!drawing) {
             drawing = true;
             x = worldX(sx);
@@ -137,9 +178,10 @@ class UIController {
 
   setImage(image) {
     this.image = image;
-
+    this.originalImage = imageUtil.copyCanvas(image);
     this.texture = new THREE.Texture(this.image);
-    this.texture.needsUpdate = true;
+
+    this.thresholdImage();
 
     const material = new THREE.MeshBasicMaterial({
       map: this.texture,
@@ -422,6 +464,12 @@ function main() {
           break;
         case '-':
           uiController.makeImageSmaller();
+          break;
+        case 'w':
+          uiController.raiseThreshold();
+          break;
+        case 's':
+          uiController.lowerThreshold();
           break;
         default:
           break;
