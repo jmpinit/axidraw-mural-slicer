@@ -35,6 +35,24 @@ class UIController {
     this.domElement.appendChild(this.drawingModeBox);
   }
 
+  makeImageBigger() {
+    if (this.imageSurface === undefined) {
+      throw new Error('No image');
+    }
+
+    this.imageSurface.scale.x *= 1.2;
+    this.imageSurface.scale.y *= 1.2;
+  }
+
+  makeImageSmaller() {
+    if (this.imageSurface === undefined) {
+      throw new Error('No image');
+    }
+
+    this.imageSurface.scale.x *= 0.8;
+    this.imageSurface.scale.y *= 0.8;
+  }
+
   setImage(image) {
     const texture = new THREE.Texture(image);
     texture.needsUpdate = true;
@@ -44,8 +62,10 @@ class UIController {
       side: THREE.DoubleSide,
     });
 
+    const aspectRatio = image.width / image.height;
+
     this.imageSurface = (() => {
-      const geometry = new THREE.PlaneGeometry(64, 64);
+      const geometry = new THREE.PlaneGeometry(128 * aspectRatio, 128);
       const plane = new THREE.Mesh(geometry, material);
       plane.x = 0;
       plane.y = 0;
@@ -300,15 +320,28 @@ function main() {
   }, false);
 
   document.addEventListener('keypress', (event) => {
-    switch (event.key) {
-      case 'u':
-        undo();
-        break;
-      case 's':
-        savePainting();
-        break;
-      default:
-        break;
+    if (uiController.mode === 'image') {
+      switch (event.key) {
+        case '+':
+          uiController.makeImageBigger();
+          break;
+        case '-':
+          uiController.makeImageSmaller();
+          break;
+        default:
+          break;
+      }
+    } else {
+      switch (event.key) {
+        case 'u':
+          undo();
+          break;
+        case 's':
+          savePainting();
+          break;
+        default:
+          break;
+      }
     }
   });
 
