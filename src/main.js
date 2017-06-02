@@ -359,8 +359,8 @@ function main() {
   camera = new THREE.OrthographicCamera(
     -window.innerWidth / 2,
     window.innerWidth / 2,
-    -window.innerHeight / 2,
     window.innerHeight / 2,
+    -window.innerHeight / 2,
     -500, 1000,
   );
 
