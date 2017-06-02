@@ -9,6 +9,12 @@ let uiController;
 
 let mouseDown = false;
 
+// STATE
+
+const brushStrokes = [];
+
+// END STATE
+
 const raycaster = new THREE.Raycaster();
 
 class UIController {
@@ -104,9 +110,14 @@ function onDocumentMouseMove(event) {
 
   const line = new THREE.Line(geometry, material);
   scene.add(line);
-  console.log('added line', geometry);
+  brushStrokes.push(line);
 
   lastPoint.copy(sectPoint);
+}
+
+function undo() {
+  const lastStroke = brushStrokes.pop();
+  scene.remove(lastStroke);
 }
 
 function onWindowResize() {
@@ -132,6 +143,14 @@ function main() {
     lastPoint = undefined;
     mouseDown = false;
   }, false);
+
+  document.addEventListener('keypress', (event) => {
+    switch (event.key) {
+      case 'u':
+        undo();
+        break;
+    }
+  });
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
