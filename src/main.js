@@ -110,8 +110,8 @@ class UIController {
     const scaleY = this.imageSurface.scale.y;
 
     const smaller = document.createElement('canvas');
-    smaller.width = 64 * aspectRatio * scaleX;
-    smaller.height = 64 * scaleY;
+    smaller.width = 32 * aspectRatio * scaleX;
+    smaller.height = 32 * scaleY;
 
     const ctx = smaller.getContext('2d');
     ctx.drawImage(this.image, 0, 0, smaller.width, smaller.height);
@@ -132,7 +132,7 @@ class UIController {
     let y;
 
     const worldX = sx => startX + ((sx / imageData.width) * worldWidth);
-    const worldY = sy => startY + ((sy / imageData.height) * worldHeight);
+    const worldY = sy => startY + ((1 - (sy / imageData.height)) * worldHeight);
 
     const addStroke = (nx, ny) => {
       strokes.push({
