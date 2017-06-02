@@ -55,7 +55,7 @@ class JetheadController {
   }
 
   runScript(commands) {
-    ['G90', 'G21', 'S10', 'F5000', 'M5'].forEach(cmd => this.sendGcode(cmd));
+    ['G90', 'G21', 'S1', 'F5000', 'M5'].forEach(cmd => this.sendGcode(cmd));
 
     commands.forEach((command) => {
       switch (command.type) {
