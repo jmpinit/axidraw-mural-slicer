@@ -2,12 +2,14 @@ const THREE = require('three');
 const Dropzone = require('dropzone');
 const svg = require('./svg');
 const imageUtil = require('./image');
+const ctrl = require('./jethead-ctrl');
 
 let renderer;
 let camera;
 let scene;
 
 let uiController;
+let machineController;
 
 let mouseDown = false;
 
@@ -232,6 +234,7 @@ class UIController {
   }
 }
 
+const machineSize = 292; // mm
 const canvasSize = 700;
 const canvas3d = (() => {
   const geometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
@@ -315,7 +318,7 @@ function onDocumentMouseMove(event) {
     return;
   }
 
-  if (sectPoint.distanceTo(lastPoint) < 10) {
+  if (sectPoint.distanceTo(lastPoint) < 50) {
     // Too close for a new point
     return;
   }
@@ -450,6 +453,21 @@ const mediaDropzone = new Dropzone(document.body, {
   },
 });
 
+function distance(x1, y1, x2, y2) {
+  return Math.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2));
+}
+
+function near(x1, y1, x2, y2) {
+  return distance(x1, y1, x2, y2) < 1; // mm
+}
+
+function worldToMachine(pt) {
+  return {
+    x: machineSize * ((pt.x / canvasSize) + 0.5),
+    y: machineSize * (1 - ((pt.y / canvasSize) + 0.5)),
+  };
+}
+
 function main() {
   window.addEventListener('resize', onWindowResize, false);
   document.addEventListener('mousemove', onDocumentMouseMove, false);
@@ -500,6 +518,45 @@ function main() {
         case 's':
           savePainting();
           break;
+        case ' ': {
+          let drawing = false;
+          let lastPos;
+
+          const commands = brushStrokes.reduce((cmds, stroke) => {
+            const { x: x1, y: y1 } = stroke.geometry.vertices[0];
+            const { x: x2, y: y2 } = stroke.geometry.vertices[1];
+
+            const continuingLine = lastPos !== undefined &&
+              near(lastPos.x, lastPos.y, x1, y1);
+
+            if (!continuingLine) {
+              cmds.push({ type: 'inkOff' });
+              drawing = false;
+
+              const cmd = worldToMachine({ x: x1, y: y1 });
+              cmd.type = 'move';
+              cmds.push(cmd);
+            }
+
+            if (!drawing) {
+              cmds.push({ type: 'inkOn' });
+              drawing = true;
+            }
+
+            const cmd = worldToMachine({ x: x2, y: y2 });
+            cmd.type = 'move';
+            cmds.push(cmd);
+
+            lastPos = {
+              x: x2,
+              y: y2,
+            };
+
+            return cmds;
+          }, []);
+          machineController.runScript(commands);
+          break;
+        }
         default:
           break;
       }
@@ -537,6 +594,12 @@ function main() {
   uiController = new UIController();
   uiController.domElement.setAttribute('id', 'uiview');
   document.body.append(uiController.domElement);
+
+  // Connect hardware
+
+  ctrl.connect().then((controller) => {
+    machineController = controller;
+  });
 }
 
 main();
