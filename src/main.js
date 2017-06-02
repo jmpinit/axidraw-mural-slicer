@@ -232,6 +232,7 @@ class UIController {
   }
 }
 
+const canvasSize = 700;
 const canvas3d = (() => {
   const geometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
   const material = new THREE.MeshBasicMaterial({
@@ -240,6 +241,23 @@ const canvas3d = (() => {
   });
 
   return new THREE.Mesh(geometry, material);
+})();
+
+const visibleBounds = (() => {
+  const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+
+  const boundSize = canvasSize / 2;
+
+  const geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(-boundSize, -boundSize, 15),
+    new THREE.Vector3(boundSize, -boundSize, 15),
+    new THREE.Vector3(boundSize, boundSize, 15),
+    new THREE.Vector3(-boundSize, boundSize, 15),
+    new THREE.Vector3(-boundSize, -boundSize, 15),
+  );
+
+  return new THREE.Line(geometry, material);
 })();
 
 function makeStroke(x1, y1, x2, y2) {
@@ -498,6 +516,7 @@ function main() {
   // Add geometry
 
   scene.add(canvas3d);
+  scene.add(visibleBounds);
 
   camera = new THREE.OrthographicCamera(
     -window.innerWidth / 2,
