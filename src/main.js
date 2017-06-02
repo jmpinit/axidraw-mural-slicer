@@ -4,6 +4,8 @@ const svg = require('./svg');
 const imageUtil = require('./image');
 const ctrl = require('./jethead-ctrl');
 
+const MIN_LINE_LENGTH = 10;
+
 let renderer;
 let camera;
 let scene;
@@ -318,7 +320,7 @@ function onDocumentMouseMove(event) {
     return;
   }
 
-  if (sectPoint.distanceTo(lastPoint) < 50) {
+  if (sectPoint.distanceTo(lastPoint) < MIN_LINE_LENGTH) {
     // Too close for a new point
     return;
   }
